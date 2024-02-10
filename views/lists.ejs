@@ -12,7 +12,7 @@
     <%- include('nav.ejs') %>
 
     <div class="white-bg">
-    <%    for (let i = (pages-1)*5; i<pages*5 ;i++){ %>
+    <%    for (let i = 0; i<posts.length ;i++){ %>
         <%if(i >= posts.length ){ break; } %>
     <div class="list-box">
         <!--<p><%=i%></p>-->
@@ -24,8 +24,8 @@
     
     </div> 
     <div>
-        <%    for (let i = 0; i<posts.length/5 ;i++){ %>
-            <% if(i+1==pages){ %>
+        <%    for (let i = 0; i<pages.count/5 ;i++){ %>
+            <% if(i+1==pages.current){ %>
                 <button type="button" class="btn btn-secondary" disabled> <%=i+1%></button>
             
             <%  } else {  %>

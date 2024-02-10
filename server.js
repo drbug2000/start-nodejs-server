@@ -201,13 +201,15 @@ app.delete('/edit/:id',async(요청,응답)=> {
 })
 
 app.get('/list/:page',async(요청,응답)=> {
-    let result = await db.collection('post').find().toArray()
-    let results = {post : result , page_num : 요청.params.page }
+    let doc_count = await db.collection('post').countDocuments()
+    let result = await db.collection('post').find().skip(5 * (요청.params.page-1) ).limit(5).toArray()
+    let page_meta = {count : doc_count , current : 요청.params.page , cur_length : result.length}
+    let results = {post : result }
     //console.log(result)
     //응답.send(result[0].title) "응답"은 한번만 해야됨
-
+    console.log("doc_count" + doc_count)
     //ejs 파일 전송 
-    응답.render('lists.ejs', { posts : result, pages : 요청.params.page })//render를 해야 ejs 파일 보내짐
+    응답.render('lists.ejs', { posts : result, pages : page_meta })//render를 해야 ejs 파일 보내짐
     //기본 경로는 views floder로 되어 있음
     //두번째 인자로 데이터를 ejs로 보내야함
 })
