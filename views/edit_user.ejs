@@ -11,14 +11,12 @@
     
     <%- include('nav.ejs') %>
 
-    <form class="form-box" action ="/edit/<%=post._id%>?_method=PUT " method = "POST">
-        <h4>글 수정하기</h4>
-        <input name ="title" value="<%=post.title%>">
-        <input name="content" value="<%=post.content%>">
+    <form class="form-box" action ="/edit_user" method = "POST">
+        <h4>사용자 설명 수정하기</h4>
+        <input name="user_detail" value="<%=user.detail%>">
         <button type="submit">전송</button>
     </form> 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-</body>
 
 </body>
+
 </html>
