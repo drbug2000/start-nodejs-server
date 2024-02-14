@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="/main.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+</head>
+<body class="grey-bg">
+    
+    <%- include('nav.ejs') %>
+
+    <form id="signupForm" class="form-box" onsubmit="return validateForm()" action ="/signup" method = "POST">
+        <h4>회원가입</h4>
+        <div class="form-floating mb-3">
+            <input name ="username" class="form-control" id="usernameInput" placeholder="user name">
+            <label for="floatingInput">user name</label>
+            <div class="invalid-feedback" id="usernameError">
+                사용중인 id입니다.
+            </div>
+            <div class="valid-feedback" id="usernameError">
+                사용가능한 id입니다.
+            </div>
+            <button type="button" onclick="checkUsername()">Check id</button>
+          </div>
+          <div class="form-floating">
+            <input name="password" type="password" class="form-control" id="password" placeholder="Password">
+            <label for="floatingPassword">Password</label>
+          </div>
+          <div class="form-floating">
+            <input name="confirmpassword" type="password" class="form-control" id="confirmPassword" placeholder="Password">
+            <label for="floatingPassword">Confirm Password</label>
+            <div class="invalid-feedback">
+                입력하신 비밀번호가 일치하지 않습니다. 다시 한번 확인해주세요
+              </div>
+          </div>
+          
+          
+        <button type="submit">전송</button>
+    </form> 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script>
+        function validateForm() {
+            event.preventDefault();
+            var password = document.getElementById("password").value;
+            
+            var confirmPassword = document.getElementById("confirmPassword");
+            var confirmPasswordValue = confirmPassword.value;
+            //var passwordError = document.getElementById("passwordError");
+            console.log("a: " + password+"b: " + confirmPasswordValue)
+            if (password !== confirmPasswordValue) {
+                //passwordError.textContent = "비밀번호가 일치하지 않습니다";
+                confirmPassword.classList.add("is-invalid")
+                return false;
+            } else {
+                //passwordError.textContent = "";
+                confirmPassword.classList.remove("is-invalid")
+                document.getElementById("signupForm").submit();
+                //return true;
+            }
+        }
+
+        function checkUsername() {
+        var username = document.getElementById("usernameInput");
+        var usernameError = document.getElementById("usernameError");
+
+        // 비동기적으로 서버에 username 중복 여부 확인
+        fetch('/checkid', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: username.value }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data.exists)
+            if (data.exists) {
+                console.log("return true")
+                username.classList.add("is-invalid")
+                usernameError.textContent = "이미 사용 중인 사용자 이름입니다.";
+            } else {
+                console.log("return fasle")
+                username.classList.add("is-valid")
+                usernameError.textContent = "";
+            }
+        })
+        .catch(error => {
+            console.error('Error checking username:', error);
+        });
+    }
+    </script>
+</body>
+
+
+</html>

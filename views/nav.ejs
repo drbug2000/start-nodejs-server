@@ -30,10 +30,14 @@
         </ul>
         <span class="navbar-text">
           <% if(user==null){ %>
-            <li><a href="../login">login</a></li>
+            <button type="button" class="btn btn-outline-primary" onclick="location.href ='../login' ">로그인</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="location.href ='../signup' ">회원가입</button>
           <% }else{    %>
             <li><a href="../mypage"><%= user.username %></a></li>
           <% } %>
+        </span>
+        <span class="navbar-text"></span>
+          
         </span>
       </div>
     </div>

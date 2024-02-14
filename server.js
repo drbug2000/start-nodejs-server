@@ -5,6 +5,10 @@ const app = express()
 //method override 패키지 세팅
 const methodOverride = require('method-override')
 
+//hashing 툴 bcrypt 세팅
+const bcrypt = require('bcrypt')
+
+
 app.use(methodOverride('_method'))
 //css,이미지,js 파일(static file) 등 html 에서 불러오는 소스를 server.js에 등록하게 하는 코드
 app.use(express.static(__dirname + '/public'))
@@ -32,6 +36,9 @@ new MongoClient(url).connect().then((client)=>{
     console.log(err)
 })
 
+//mongo connect 
+const MongoStore = require('connect-mongo')
+
 //passport로 session을 구현하기 위한 library setting
 const session = require('express-session')
 const passport = require('passport')
@@ -41,7 +48,12 @@ app.use(session({
 	secret: 'kimsessionpasswordisk',
 	resave: false,
 	saveUninitialized: false,
-    cookie : {maxAge: 60*60*1000}
+    cookie : {maxAge: 60*60*1000},
+    store : MongoStore.create({
+        mongoUrl : "mongodb+srv://drbug2000:c2888c2888@chris2888.h3ieuji.mongodb.net/?retryWrites=true&w=majority",
+        dbName : 'fourm'
+    })
+
 }))
 app.use(passport.session())
 
@@ -58,10 +70,11 @@ passport.serializeUser((user,done)=>{
 })
 
 //사용자가 보낸 쿠키를 분석하는 코드 
-passport.deserializeUser((user,done)=>{
-	//유저가 보낸 쿠키(token)를 분석하는 코드
-	process.nextTick(()=>{
-		done(null, user)		
+passport.deserializeUser(async(user,done)=>{
+	let result = await db.collection('user').findOne({_id: new ObjectId(user.id)})
+	delete result.password
+    process.nextTick(()=>{
+		done(null, result)		
 	})
 })
 
@@ -102,6 +115,10 @@ app.get('/time',async(요청,응답)=> {
 app.get('/write',async(요청,응답)=> {
     
     //ejs 파일 전송 
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     응답.render('write.ejs',{user:요청.user})//render를 해야 ejs 파일 보내짐
     //기본 경로는 views floder로 되어 있음
     //두번째 인자로 데이터를 ejs로 보내야함
@@ -109,6 +126,10 @@ app.get('/write',async(요청,응답)=> {
 
 app.post('/newpost',async(요청,응답)=> {
     console.log(요청.body)
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     try{
         if(요청.body.title==''){
             응답.send("no title string")
@@ -127,6 +148,10 @@ app.post('/newpost',async(요청,응답)=> {
 
 app.get('/detail/:id',async(요청,응답)=> {
     param=요청.params
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     //await db.collection('post').findOne({:param.aaa})
     try{
     let result =await db.collection('post').findOne({_id:new ObjectId(param.id)})
@@ -147,6 +172,10 @@ app.get('/edit/:id',async(요청,응답)=> {
     param=요청.params
     //await db.collection('post').findOne({:param.aaa})
     console.log('edit GET API')
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     try{
         let result =await db.collection('post').findOne({_id:new ObjectId(param.id)})
         //let result =await db.collection('post').findOne({_id:new ObjectId('65b7506bb9e7ac76bf0c5b9a')})
@@ -166,6 +195,10 @@ app.get('/edit/:id',async(요청,응답)=> {
 app.post('/edit/:id',async(요청,응답)=> {
     //console.log(요청.body)
     console.log('edit API')
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     try{
         if(요청.body.title==''){
             응답.send('no title string')
@@ -188,6 +221,10 @@ app.post('/edit/:id',async(요청,응답)=> {
 app.put('/edit/:id',async(요청,응답)=> {
     //console.log(요청.body)
     console.log('edit API-by PUT')
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     try{
         if(요청.body.title==''){
             응답.send('no title string')
@@ -209,6 +246,10 @@ app.put('/edit/:id',async(요청,응답)=> {
 
 app.delete('/edit/:id',async(요청,응답)=> {
     console.log("delete API")
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
     try{
         var target_id = { _id : new ObjectId(요청.params.id)}
         if(target_id){
@@ -256,7 +297,7 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번,cb)=> 
 		               //회원인증 실패 = false
 		return cb(null,false,{message: '아이디 DB에 없음'})
 	}
-	if (result.password == 입력한비번){
+	if (await bcrypt.compare(입력한비번,result.password)){
         console.log('[login]mathch id & password')
 		//로그인 성공
 		return cb(null, result)
@@ -300,7 +341,13 @@ app.post('/login',async(요청,응답,next)=>{
 })
 
 app.get('/mypage',async(요청,응답)=> {
-    let result = await db.collection('user').findOne({_id : new ObjectId(요청.user.id)})
+    console.log("mypage API start")
+    console.log(요청.user)
+    if(!요청.user){
+        응답.render('login_again.ejs')
+        return 
+    }
+    let result = await db.collection('user').findOne({_id : new ObjectId(요청.user._id)})
     let user = {username: result.username, detail : result.detail }
     try{
         응답.render('mypage.ejs',{user: user})//기능이 끝나면 응답을 해줘야함( 그래야 무한 로딩 안빠진다 )
@@ -313,7 +360,10 @@ app.get('/mypage',async(요청,응답)=> {
 })
 
 app.get('/edit_user',async(요청,응답)=> {
-    let result = await db.collection('user').findOne({_id : new ObjectId(요청.user.id)})
+    if(!요청.user){
+        응답.render('login_again.ejs')
+    }
+    let result = await db.collection('user').findOne({_id : new ObjectId(요청.user._id)})
     let user = {username: result.username, detail : result.detail }
     console.log(user)
     try{
@@ -322,7 +372,6 @@ app.get('/edit_user',async(요청,응답)=> {
         console.log(e)
         응답.status(500).send('서버 에러남') 
     }
-    
     //redirect하면 다른 링크로 보내줌
 })
 
@@ -337,7 +386,7 @@ app.post('/edit_user',async(요청,응답)=> {
 
         }
         console.log(요청.user)
-        var target_id = {_id : new ObjectId(요청.user.id)}
+        var target_id = {_id : new ObjectId(요청.user._id)}
         console.log( 'targetid'+ target_id)
         var update = { $set:{ detail : 요청.body.user_detail }}
         await db.collection('user').updateOne(target_id,update)
@@ -350,4 +399,53 @@ app.post('/edit_user',async(요청,응답)=> {
     }
     
     //redirect하면 다른 링크로 보내줌
+})
+
+app.get('/signup',async(요청,응답)=> {
+    
+    try{
+        응답.render('create_account.ejs',{user:요청.user})//기능이 끝나면 응답을 해줘야함( 그래야 무한 로딩 안빠진다 )
+    }catch(e){
+        console.log(e)
+        응답.status(500).send('서버 에러남') 
+    }
+    
+    //redirect하면 다른 링크로 보내줌
+})
+
+app.post('/signup',async(요청,응답,next)=>{
+	//입력된 값을 대조하는 코드
+    console.log("sign up AIP start")
+    console.log("body data: "+ 요청.body)
+	let checkname = await db.collection('user').findOne({username : 요청.body.username})
+    console.log("checkname(null is ok) :" +checkname)
+    console.log('password '+요청.body.password)
+    console.log('confirm password '+요청.body.confirmpassword)
+    if(checkname){
+        응답.send("이미 있는 id 입니다")
+        return 
+    }
+
+    //password compare code
+    let hashpassword = await bcrypt.hash(요청.body.password,10)
+    await db.collection('user').insertOne({ 
+        username : 요청.body.username, 
+        password : hashpassword 
+    })
+    응답.render('signup_success.ejs',{user:요청.user})
+})
+
+app.post('/checkid',async(요청,응답)=> {
+    //입력된 값을 대조하는 코드
+    console.log("checkid AIP start")
+    console.log("body data: "+ 요청.body.username)
+	let checkname = await db.collection('user').findOne({username : 요청.body.username})
+    console.log("checkname(null is ok) :" +checkname)
+    if(checkname){
+        응답.send({"exists":true})//이미 아이디가 존재함
+        
+    }else{
+        응답.send({"exists":false})
+    }
+    
 })
