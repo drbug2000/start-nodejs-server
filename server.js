@@ -20,15 +20,18 @@ app.set('view engine','ejs')
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
 
+//env 파일 관리를 위한코드
+require('dotenv').config()
+
 //MongoDB에 연결하는 코드
 const { MongoClient,ObjectId } = require('mongodb')
 let db 
-const url = 'mongodb+srv://drbug2000:c2888c2888@chris2888.h3ieuji.mongodb.net/?retryWrites=true&w=majority '
+const url = process.env.DB_URL
 new MongoClient(url).connect().then((client)=>{
     console.log('DB연결성공')
     db = client.db('forum')
     //서버를 띄우는 코드
-    app.listen(8888,()=>{
+    app.listen(process.env.PORT,()=>{
         console.log('http://localhost:8080 에서 서버 실행중')
     })
 
@@ -45,12 +48,12 @@ const passport = require('passport')
 const LocalStrategy = require('passport-local')
 app.use(passport.initialize())
 app.use(session({
-	secret: 'kimsessionpasswordisk',
+	secret: process.env.SESSION_KEY,
 	resave: false,
 	saveUninitialized: false,
     cookie : {maxAge: 60*60*1000},
     store : MongoStore.create({
-        mongoUrl : "mongodb+srv://drbug2000:c2888c2888@chris2888.h3ieuji.mongodb.net/?retryWrites=true&w=majority",
+        mongoUrl : process.env.DB_URL,
         dbName : 'fourm'
     })
 
@@ -112,24 +115,16 @@ app.get('/time',async(요청,응답)=> {
     //두번째 인자로 데이터를 ejs로 보내야함
 })
 
-app.get('/write',async(요청,응답)=> {
+app.get('/write',checklogin,async(요청,응답)=> {
     
     //ejs 파일 전송 
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
     응답.render('write.ejs',{user:요청.user})//render를 해야 ejs 파일 보내짐
     //기본 경로는 views floder로 되어 있음
     //두번째 인자로 데이터를 ejs로 보내야함
 })
 
-app.post('/newpost',async(요청,응답)=> {
+app.post('/newpost',checklogin,async(요청,응답)=> {
     console.log(요청.body)
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
     try{
         if(요청.body.title==''){
             응답.send("no title string")
@@ -146,12 +141,9 @@ app.post('/newpost',async(요청,응답)=> {
     //redirect하면 다른 링크로 보내줌
 })
 
-app.get('/detail/:id',async(요청,응답)=> {
+app.get('/detail/:id',checklogin,async(요청,응답)=> {
     param=요청.params
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
+
     //await db.collection('post').findOne({:param.aaa})
     try{
     let result =await db.collection('post').findOne({_id:new ObjectId(param.id)})
@@ -168,14 +160,11 @@ app.get('/detail/:id',async(요청,응답)=> {
     
 })
 
-app.get('/edit/:id',async(요청,응답)=> {
+app.get('/edit/:id',checklogin,async(요청,응답)=> {
     param=요청.params
     //await db.collection('post').findOne({:param.aaa})
     console.log('edit GET API')
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
+
     try{
         let result =await db.collection('post').findOne({_id:new ObjectId(param.id)})
         //let result =await db.collection('post').findOne({_id:new ObjectId('65b7506bb9e7ac76bf0c5b9a')})
@@ -192,13 +181,9 @@ app.get('/edit/:id',async(요청,응답)=> {
     
 })
 
-app.post('/edit/:id',async(요청,응답)=> {
+app.post('/edit/:id',checklogin,async(요청,응답)=> {
     //console.log(요청.body)
     console.log('edit API')
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
     try{
         if(요청.body.title==''){
             응답.send('no title string')
@@ -218,13 +203,10 @@ app.post('/edit/:id',async(요청,응답)=> {
     //redirect하면 다른 링크로 보내줌
 })
 
-app.put('/edit/:id',async(요청,응답)=> {
+app.put('/edit/:id',checklogin,async(요청,응답)=> {
     //console.log(요청.body)
     console.log('edit API-by PUT')
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
+
     try{
         if(요청.body.title==''){
             응답.send('no title string')
@@ -244,12 +226,9 @@ app.put('/edit/:id',async(요청,응답)=> {
 
 })
 
-app.delete('/edit/:id',async(요청,응답)=> {
+app.delete('/edit/:id',checklogin,async(요청,응답)=> {
     console.log("delete API")
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
+
     try{
         var target_id = { _id : new ObjectId(요청.params.id)}
         if(target_id){
@@ -309,6 +288,13 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번,cb)=> 
 //전체 코드를 try-catch 하는것도 하면 좋음
 }))
 
+//middleware
+function checklogin(요청,응답,next){
+    if(!요청.user){
+        응답.render('login_again.ejs')
+    }
+}
+
 app.get('/login',async(요청,응답)=> {
     
     try{
@@ -340,13 +326,10 @@ app.post('/login',async(요청,응답,next)=>{
 	})(요청,응답,next)
 })
 
-app.get('/mypage',async(요청,응답)=> {
+app.get('/mypage',checklogin,async(요청,응답)=> {
     console.log("mypage API start")
-    console.log(요청.user)
-    if(!요청.user){
-        응답.render('login_again.ejs')
-        return 
-    }
+    //console.log(요청.user)
+
     let result = await db.collection('user').findOne({_id : new ObjectId(요청.user._id)})
     let user = {username: result.username, detail : result.detail }
     try{
@@ -359,10 +342,8 @@ app.get('/mypage',async(요청,응답)=> {
     //redirect하면 다른 링크로 보내줌
 })
 
-app.get('/edit_user',async(요청,응답)=> {
-    if(!요청.user){
-        응답.render('login_again.ejs')
-    }
+app.get('/edit_user',checklogin,async(요청,응답)=> {
+    
     let result = await db.collection('user').findOne({_id : new ObjectId(요청.user._id)})
     let user = {username: result.username, detail : result.detail }
     console.log(user)
@@ -375,16 +356,12 @@ app.get('/edit_user',async(요청,응답)=> {
     //redirect하면 다른 링크로 보내줌
 })
 
-app.post('/edit_user',async(요청,응답)=> {
+app.post('/edit_user',checklogin,async(요청,응답)=> {
     console.log('edit user-detail API')
     try{
         if(요청.body.user_detail.length >200){
             응답.send('no title string')
         }else{
-        if(!요청.user){
-            응답.send('로그인 필요')
-
-        }
         console.log(요청.user)
         var target_id = {_id : new ObjectId(요청.user._id)}
         console.log( 'targetid'+ target_id)
@@ -427,7 +404,7 @@ app.post('/signup',async(요청,응답,next)=>{
     }
 
     //password compare code
-    let hashpassword = await bcrypt.hash(요청.body.password,10)
+    let hashpassword = await bcrypt.hash(요청.body.password,process.env.HASH_TIME)
     await db.collection('user').insertOne({ 
         username : 요청.body.username, 
         password : hashpassword 
@@ -449,3 +426,14 @@ app.post('/checkid',async(요청,응답)=> {
     }
     
 })
+
+app.get('/test',async(요청,응답)=> {
+    
+    console.log("user:",요청.user)
+    let checkname = await db.collection('user').findOne({username : 요청.body.username})
+    
+    응답.send("check server console.")
+    //redirect하면 다른 링크로 보내줌
+})
+
+
