@@ -34,7 +34,7 @@
             <button type="button" class="btn btn-outline-secondary" onclick="location.href ='../signup' ">회원가입</button>
           <% }else{    %>
             <li><a href="../mypage"><%= user.username %></a></li>
-            <button type="button" class="btn btn-outline-primary" onclick="location.href ='../logout' ">로그아웃</button>
+            <button type="button" id="logoutButton" class="btn btn-outline-primary">로그아웃</button>
           <% } %>
         </span>
         <span class="navbar-text"></span>
@@ -43,3 +43,46 @@
       </div>
     </div>
   </nav>
+
+  <script>
+    document.getElementById('logoutButton').addEventListener('click', function() {
+      // Use the browser's built-in confirmation dialog
+      const userConfirmed = window.confirm('Are you sure you want to logout?');
+  
+      if (userConfirmed) {
+        // User clicked 'OK', send POST request or perform other actions
+        sendLogoutRequest();
+      } else {
+        // User clicked 'Cancel', do nothing or handle as needed
+      }
+    });
+  
+    function sendLogoutRequest() {
+      // Send POST request to the server
+      const endpoint = '/logout';
+  
+      // Example of using the Fetch API to send a POST request
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          //'Content-Type': 'application/json',
+          // Add any other headers as needed
+        },
+        // Add any payload/body data if needed
+        body: JSON.stringify({}),
+      })
+      .then(response => {
+        if (response.ok) {
+          // Successful response, redirect or perform any other action
+          window.location.href = '/list';
+        } else {
+          // Handle error response
+          console.error('Error:', response.status, response.statusText);
+        }
+      })
+      .catch(error => {
+        // Handle network error
+        console.error('Network error:', error);
+      });
+    }
+  </script>

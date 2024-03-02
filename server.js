@@ -26,10 +26,12 @@ require('dotenv').config()
 //MongoDB에 연결하는 코드
 const { MongoClient,ObjectId } = require('mongodb')
 let db 
+let sessiondb
 const url = process.env.DB_URL
 new MongoClient(url).connect().then((client)=>{
     console.log('DB연결성공')
     db = client.db('forum')
+    sessiondb=client.db('fourm')
     //서버를 띄우는 코드
     app.listen(process.env.PORT,()=>{
         console.log('http://localhost:8080 에서 서버 실행중')
@@ -62,24 +64,39 @@ app.use(passport.session())
 
 //세션을 만드는 자동 코드
 passport.serializeUser((user,done)=>{
+    console.log("serializeUSer() code active")
+    console.log("user + serial: ")
+    user.serial = true
     //요청.login 이 실행되면, 이 안의 코드도 같이 실행됨
     console.log(user)//로그인 시도중인 유저의 정보가 담긴다. 
     //위 passport.use(local)에서 return cb(null, result)했던 result가 그대로 담겨서 그렇다.
     process.nextTick(()=>{//nodejs에서 특정 코드를 비동기적으로 처리 해주는 문법(queueMicrotasj())
         //이 내용의 document를 생성하고 쿠키도 알아서 보내줌
-        done(null, {id : user._id , username:user.username})//세션document에 기록할 내용
+        done(null, {id : user._id , username:user.username, st:12})//세션document에 기록할 내용
         //이렇게 하면 세션이 발행됨. DB연결은 아직 안했으니 메모리에 저장됨
     })
 })
 
 //사용자가 보낸 쿠키를 분석하는 코드 
 passport.deserializeUser(async(user,done)=>{
+    console.log("deserializeUSer() code active")
+    user.deser = true
+    console.log("user + deser: ",user)
+
 	let result = await db.collection('user').findOne({_id: new ObjectId(user.id)})
+    result.desr2=true
 	delete result.password
     process.nextTick(()=>{
 		done(null, result)		
 	})
 })
+//middleware
+function checklogin(요청,응답,next){
+    if(!요청.user){
+        응답.render('login_again.ejs')
+    }
+    next()
+}
 
 //서버의 기능 작성
 app.get('/',(요청,응답)=> {
@@ -142,6 +159,7 @@ app.post('/newpost',checklogin,async(요청,응답)=> {
 })
 
 app.get('/detail/:id',checklogin,async(요청,응답)=> {
+    console.log("detail ")
     param=요청.params
 
     //await db.collection('post').findOne({:param.aaa})
@@ -270,6 +288,8 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번,cb)=> 
 	console.log('passport start')
 	//DB조회
 	let result = await db.collection('user').findOne({username : 입력한아이디})
+    result.pass=true
+    console.log("result+passport:",result )
 	if(!result){
 	//id가 없는경우
         console.log('[login fail]no id')
@@ -288,12 +308,7 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번,cb)=> 
 //전체 코드를 try-catch 하는것도 하면 좋음
 }))
 
-//middleware
-function checklogin(요청,응답,next){
-    if(!요청.user){
-        응답.render('login_again.ejs')
-    }
-}
+
 
 app.get('/login',async(요청,응답)=> {
     
@@ -313,11 +328,16 @@ app.post('/login',async(요청,응답,next)=>{
 		//비교 작업이 끝나면 실행할 코드  
 		//error: 에러 발생시, user:성공시, info:실패 사유
         console.log('login start')
+        user.logi=true
+        console.log("user +login:",user)
 		if(error) return 응답.status(500).json(error)
 		if(!user) return 응답.status(401).json(info.message)//우리가 위에 적은 메세지
 		console.log('login not fail')
 		//session을 만들어줌
 		요청.logIn(user,(err)=>{
+            console.log('요청.login start')
+            user.login2=true
+            console.log("user+login2 :",user)
 			if(err) return next(err)
 			//로그인 성공시 실행하는 코드
             console.log('login success')
@@ -427,13 +447,79 @@ app.post('/checkid',async(요청,응답)=> {
     
 })
 
-app.get('/test',async(요청,응답)=> {
+app.post('/logout',async(요청,응답)=> {
+    //입력된 값을 대조하는 코드
+    console.log("logout start")
+
+    console.log("user:",요청.user)
+    요청.logout(function(err){
+        if(err) {return next(err)}
+        
+        요청.session.destroy((err)=>{
+            응답.clearCookie("connect.sid")
+            응답.send("logout success")
+        })
+        
+        //응답.send("logout success")
+    })
+    
+})
+
+app.get('/test',async(요청,응답,next)=> {
     
     console.log("user:",요청.user)
     let checkname = await db.collection('user').findOne({username : 요청.body.username})
-    
+    console.log("요청: ",요청,": 요청%")
+    let head = 요청.headers
+    console.log("headers :",head, " : headers%")
+    console.log("Cookeis :",head.cookie, " : Cookeis%")
+
+    요청.logout(function(err){
+        if(err) {return next(err)}
+        응답.send("logout success")
+    })
+
     응답.send("check server console.")
     //redirect하면 다른 링크로 보내줌
 })
 
+app.get('/test2',async(요청,응답,next)=> {
+    console.log("test2")
+    console.log("user:",요청.user)
+    요청.logout(function(err){
+        if(err) {return next(err)}
+        /*
+        요청.session.destroy((err)=>{
+            응답.clearCookie("connect.sid")
+            응답.send("logout success")
+        })
+        */
+        응답.send("logout success")
+    })
+    
+    /*요청.session.destroy((err)=>{
+
+        응답.send("logout success")
+    })
+    */
+    //응답.send("check server console.")
+    //redirect하면 다른 링크로 보내줌
+})
+
+app.get('/cook',async(요청,응답)=> {
+    console.log("cookei test")
+    console.log("Cookeis :",요청.cookies, " : Cookeis%")
+    /*
+    응답.writeHead(200, {
+        'Set-Cookie':['yummy_cookie=choco', 'tasty_cookie=strawberry']             
+    })*/
+    //응답.setHeader("Set-Cookie","token1=11")
+    
+    //응답.end("check server console.")
+    
+    응답.cookie('key1', 'value3', {
+        maxAge:10000
+     });
+    응답.send("cookies")
+})
 
