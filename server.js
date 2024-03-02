@@ -424,7 +424,7 @@ app.post('/signup',async(요청,응답,next)=>{
     }
 
     //password compare code
-    let hashpassword = await bcrypt.hash(요청.body.password,process.env.HASH_TIME)
+    let hashpassword = await bcrypt.hash(요청.body.password,Number(process.env.HASH_TIME))
     await db.collection('user').insertOne({ 
         username : 요청.body.username, 
         password : hashpassword 
