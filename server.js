@@ -62,6 +62,9 @@ app.use(session({
 }))
 app.use(passport.session())
 
+
+const axios = require('axios')
+
 //세션을 만드는 자동 코드
 passport.serializeUser((user,done)=>{
     console.log("serializeUSer() code active")
@@ -523,3 +526,39 @@ app.get('/cook',async(요청,응답)=> {
     응답.send("cookies")
 })
 
+
+app.get('/login/OAuth',async(요청,응답)=> {
+    console.log("/login/OAuth start ")
+    let url = process.env.GOOGLE_ENDPOINT
+    url += `?client_id=${process.env.GOOGLE_CLIENT_ID}`
+    url += `&redirect_uri=${process.env.GOOGLE_REDIRECT_URI}`
+    url += '&response_type=code'
+    url += '&scope=email profile'
+
+    응답.redirect(url)
+})
+
+app.get('/login/redirect',async(요청,응답)=> {
+    console.log("/login/redirect start")
+    const { code } = 요청.query
+    console.log(`code: ${code}`)
+
+    console.log("/login/redirect resp1 start")
+    const resp = await axios.post(process.env.GOOGLE_TOKEN_URL,{
+        code, 
+        client_id : process.env.GOOGLE_CLIENT_ID,
+        client_secret : process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri : process.env.GOOGLE_REDIRECT_URI,
+        grant_type : 'authorization_code'
+
+    })
+
+    console.log("/login/redirect resp2 start")
+    const resp2 = await axios.get(process.env.GOOGLE_USERINFO_URL,{
+        headers :{
+            Authorization : `Bearer ${resp.data.access_token}`,
+        },
+    })
+
+    응답.json(resp2.data)
+})
